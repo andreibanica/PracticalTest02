@@ -49,48 +49,33 @@ public class Comm extends Thread {
             String page;
 
 
-            HttpGet httpGet = new HttpGet("https://api.coindesk.com/v1/bpi/currentprice/EUR.json");
-            HttpResponse response = httpClient.execute(httpGet);
-            HttpEntity entity = response.getEntity();
-
-            page = EntityUtils.toString(entity);
-
-            JSONObject content = new JSONObject(page);
-
-            JSONObject time = content.getJSONObject("time");
-
-            // "May 18, 2020 05:17:00 UTC",
-
-            String parsed = time.getString("updated").substring(13, 21);
-
-
-
-            SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss");
-            Date date = format.parse(parsed);
-            date.setHours(date.getHours() + 3);
-            Log.i("DATA", date.toString());
-
-            JSONObject bpi = content.getJSONObject("bpi");
-            JSONObject usd = bpi.getJSONObject("USD");
-            JSONObject eur = bpi.getJSONObject("EUR");
-
-            String euro = eur.getString("rate");
-            String dollars = usd.getString("rate");
-
             Date update = server.time;
+            Date date = new Date();
             Log.i(comm, "SERVER time " + update.toString());
             String result;
 
-            if (server.initial) {
+
+            if (server.initial || update.getHours() < date.getHours() || update.getMinutes() < date.getMinutes()) {
                 server.initial = false;
                 server.time = date;
-                server.setData("eur", euro);
-                server.setData("usd", dollars);
-                Log.i(comm, "INITIAL");
-            }
-
-            if (update.getMinutes() < date.getMinutes()) {
                 Log.i(comm, "new dataset");
+
+                HttpGet httpGet = new HttpGet("https://api.coindesk.com/v1/bpi/currentprice/EUR.json");
+                HttpResponse response = httpClient.execute(httpGet);
+                HttpEntity entity = response.getEntity();
+
+                page = EntityUtils.toString(entity);
+
+                JSONObject content = new JSONObject(page);
+
+
+                JSONObject bpi = content.getJSONObject("bpi");
+                JSONObject usd = bpi.getJSONObject("USD");
+                JSONObject eur = bpi.getJSONObject("EUR");
+
+                String euro = eur.getString("rate");
+                String dollars = usd.getString("rate");
+
                 server.setData("eur", euro);
                 server.setData("usd", dollars);
                 server.time = date;
@@ -113,8 +98,6 @@ public class Comm extends Thread {
             writer.flush();
 
         } catch (IOException | JSONException e) {
-            e.printStackTrace();
-        } catch (ParseException e) {
             e.printStackTrace();
         }
 
